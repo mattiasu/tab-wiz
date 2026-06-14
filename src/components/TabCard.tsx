@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useStore } from '../hooks/useStore'
 
 interface Props {
   tab: chrome.tabs.Tab
+  onAssignToCategory: (tab: chrome.tabs.Tab) => void
 }
 
 function getFaviconUrl(tab: chrome.tabs.Tab): string | null {
@@ -16,10 +18,10 @@ function getFaviconUrl(tab: chrome.tabs.Tab): string | null {
   }
 }
 
-export default function TabCard({ tab }: Props) {
-  const { pendingCloseTabId, setPendingCloseTabId, closeTab } = useStore()
+export default function TabCard({ tab, onAssignToCategory }: Props) {
+  const { closeTab } = useStore()
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const favicon = getFaviconUrl(tab)
-  const isPendingClose = pendingCloseTabId === tab.id
 
   function handleClick() {
     if (tab.id !== undefined) {
@@ -32,45 +34,54 @@ export default function TabCard({ tab }: Props) {
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault()
-    if (tab.id !== undefined) setPendingCloseTabId(tab.id)
+    setMenuPos({ x: e.clientX, y: e.clientY })
   }
 
-  function handleClose(e: React.MouseEvent) {
-    e.stopPropagation()
-    if (tab.id !== undefined) closeTab(tab.id)
+  function closeMenu() {
+    setMenuPos(null)
   }
 
   return (
-    <div
-      onContextMenu={handleContextMenu}
-      className={`flex w-full items-center gap-2 rounded-md bg-white px-2.5 py-2 ring-1 transition-all ${
-        isPendingClose
-          ? 'ring-red-300 bg-red-50'
-          : 'ring-zinc-100 hover:bg-zinc-50 hover:ring-zinc-200'
-      }`}
-    >
-      <button
-        onClick={handleClick}
-        className="flex min-w-0 flex-1 items-center gap-2 text-left focus:outline-none"
+    <>
+      <div
+        onContextMenu={handleContextMenu}
+        className="flex w-full items-center gap-2 rounded-md bg-white px-2.5 py-2 ring-1 ring-zinc-100 transition-all hover:bg-zinc-50 hover:ring-zinc-200"
       >
-        {favicon ? (
-          <img src={favicon} alt="" className="h-4 w-4 shrink-0 rounded-sm" />
-        ) : (
-          <div className="h-4 w-4 shrink-0 rounded-sm bg-zinc-200" />
-        )}
-        <span className={`truncate text-sm ${isPendingClose ? 'text-red-700' : 'text-zinc-700'}`}>
-          {tab.title ?? tab.url}
-        </span>
-      </button>
-
-      {isPendingClose && (
         <button
-          onClick={handleClose}
-          className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold text-red-500 ring-1 ring-red-300 hover:bg-red-500 hover:text-white transition-colors"
+          onClick={handleClick}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left focus:outline-none"
         >
-          Close tab
+          {favicon
+            ? <img src={favicon} alt="" className="h-4 w-4 shrink-0 rounded-sm" />
+            : <div className="h-4 w-4 shrink-0 rounded-sm bg-zinc-200" />
+          }
+          <span className="truncate text-sm text-zinc-700">{tab.title ?? tab.url}</span>
         </button>
+      </div>
+
+      {menuPos && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={closeMenu} />
+          <div
+            className="fixed z-20 min-w-44 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-zinc-200"
+            style={{ left: menuPos.x, top: menuPos.y }}
+          >
+            <button
+              onClick={() => { closeMenu(); onAssignToCategory(tab) }}
+              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+            >
+              Assign to category…
+            </button>
+            <div className="my-1 border-t border-zinc-100" />
+            <button
+              onClick={() => { closeMenu(); if (tab.id !== undefined) closeTab(tab.id) }}
+              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-red-500 hover:bg-red-50"
+            >
+              Close tab
+            </button>
+          </div>
+        </>
       )}
-    </div>
+    </>
   )
 }

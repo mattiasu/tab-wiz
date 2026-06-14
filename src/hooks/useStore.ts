@@ -9,13 +9,12 @@ interface Store {
   allTabs: chrome.tabs.Tab[]
   groupedTabs: GroupedTabs
   loading: boolean
-  pendingCloseTabId: number | null
 
   init: () => Promise<void>
   syncFromStorage: () => Promise<void>
   setCategories: (categories: Category[]) => Promise<void>
+  addPatternToCategory: (categoryId: string, pattern: string) => Promise<void>
   refreshTabs: () => Promise<void>
-  setPendingCloseTabId: (id: number | null) => void
   closeTab: (tabId: number) => Promise<void>
 }
 
@@ -25,7 +24,6 @@ export const useStore = create<Store>((set, get) => {
     allTabs: [],
     groupedTabs: new Map(),
     loading: true,
-    pendingCloseTabId: null,
 
     init: async () => {
       const categories = await loadCategories()
@@ -54,23 +52,26 @@ export const useStore = create<Store>((set, get) => {
       set({ categories, allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories) })
     },
 
+    addPatternToCategory: async (categoryId, pattern) => {
+      const { categories, setCategories } = get()
+      const updated = categories.map((c) => {
+        if (c.id !== categoryId || c.patterns.includes(pattern)) return c
+        return { ...c, patterns: [...c.patterns, pattern] }
+      })
+      await setCategories(updated)
+    },
+
     refreshTabs: async () => {
       const { categories } = get()
       const tabs = await chrome.tabs.query({})
       set({ allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories) })
     },
 
-    setPendingCloseTabId: (id) => set({ pendingCloseTabId: id }),
-
     closeTab: async (tabId) => {
       await chrome.tabs.remove(tabId)
       const { categories } = get()
       const tabs = await chrome.tabs.query({})
-      set({
-        pendingCloseTabId: null,
-        allTabs: tabs,
-        groupedTabs: groupTabsByCategory(tabs, categories),
-      })
+      set({ allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories) })
     },
   }
 })

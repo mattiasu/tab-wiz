@@ -3,12 +3,14 @@ import { useStore } from '../hooks/useStore'
 import { useSearch } from '../hooks/useSearch'
 import CategoryColumn from '../components/CategoryColumn'
 import SearchResults from '../components/SearchResults'
+import QuickRuleModal from '../components/QuickRuleModal'
 import type { SearchResult } from '../hooks/useSearch'
 
 export default function App() {
-  const { loading, groupedTabs, allTabs, init, syncFromStorage, setPendingCloseTabId } = useStore()
+  const { loading, groupedTabs, allTabs, categories, init, syncFromStorage, addPatternToCategory } = useStore()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [quickRuleTab, setQuickRuleTab] = useState<chrome.tabs.Tab | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const results = useSearch(query, allTabs)
 
@@ -47,6 +49,11 @@ export default function App() {
     }
   }
 
+  async function handleConfirmRule(categoryId: string, pattern: string) {
+    await addPatternToCategory(categoryId, pattern)
+    setQuickRuleTab(null)
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center text-zinc-400" style={{ backgroundColor: '#fafafa' }}>
@@ -59,7 +66,7 @@ export default function App() {
   const isSearching = query.trim().length > 0
 
   return (
-    <div className="flex min-h-screen flex-col p-6" style={{ backgroundColor: '#fafafa' }} onClick={() => setPendingCloseTabId(null)}>
+    <div className="flex min-h-screen flex-col p-6" style={{ backgroundColor: '#fafafa' }}>
       <div className="mx-auto w-full max-w-2xl">
         <input
           ref={inputRef}
@@ -85,7 +92,12 @@ export default function App() {
               <p className="text-zinc-400">No tabs open.</p>
             ) : (
               columns.map(({ category, tabs }) => (
-                <CategoryColumn key={category.id} category={category} tabs={tabs} />
+                <CategoryColumn
+                  key={category.id}
+                  category={category}
+                  tabs={tabs}
+                  onAssignToCategory={setQuickRuleTab}
+                />
               ))
             )}
           </div>
@@ -93,6 +105,7 @@ export default function App() {
       </div>
 
       <footer className="mt-6 flex items-center gap-3 text-xs text-zinc-400">
+        <img src="/icons/icon16.png" alt="" className="h-4 w-4" />
         <span className="font-medium text-zinc-500">Tab Wiz</span>
         <span>·</span>
         <a
@@ -104,6 +117,15 @@ export default function App() {
           Settings
         </a>
       </footer>
+
+      {quickRuleTab && (
+        <QuickRuleModal
+          tab={quickRuleTab}
+          categories={categories}
+          onConfirm={handleConfirmRule}
+          onClose={() => setQuickRuleTab(null)}
+        />
+      )}
     </div>
   )
 }

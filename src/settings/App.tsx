@@ -21,22 +21,36 @@ export default function App() {
     setCategories(categories.map((c) => (c.id === updated.id ? updated : c)))
   }
 
+  function normalize(cats: Category[]): Category[] {
+    return cats.map((c, i) => ({ ...c, order: i }))
+  }
+
+  function sorted() {
+    return [...categories].sort((a, b) => a.order - b.order)
+  }
+
   function deleteCategory(id: string) {
-    setCategories(categories.filter((c) => c.id !== id))
+    setCategories(normalize(sorted().filter((c) => c.id !== id)))
+  }
+
+  function moveCategory(id: string, direction: 'up' | 'down') {
+    const s = sorted()
+    const idx = s.findIndex((c) => c.id === id)
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= s.length) return
+    const reordered = [...s]
+    ;[reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]]
+    setCategories(normalize(reordered))
   }
 
   function addCategory() {
     const usedColors = new Set(categories.map((c) => c.color))
     const color = PALETTE.find((c) => !usedColors.has(c)) ?? PALETTE[0]
-    const next: Category = {
-      id: randomId(),
-      name: 'New Category',
-      color,
-      patterns: [],
-      order: categories.length,
-    }
-    setCategories([...categories, next])
+    const next: Category = { id: randomId(), name: 'New Category', color, patterns: [], order: 0 }
+    setCategories(normalize([...sorted(), next]))
   }
+
+  const sortedCategories = sorted()
 
   return (
     <div className="min-h-screen p-8" style={{ backgroundColor: '#fafafa' }}>
@@ -47,18 +61,16 @@ export default function App() {
         <p className="mt-1 text-sm text-zinc-500">
           Categories match top-to-bottom — first match wins. Tabs with no match won't appear in any column.
         </p>
-        <p className="mt-3 mb-8 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-700 ring-1 ring-amber-100">
-          The categories below are <strong>examples</strong> — rename, delete, or replace them entirely to match your own workflow.
-        </p>
-
-        <div className="flex flex-col gap-3">
-          {categories.map((cat) => (
+        <div className="mt-8 flex flex-col gap-3">
+          {sortedCategories.map((cat, idx) => (
             <CategoryEditor
               key={cat.id}
               category={cat}
               canDelete={categories.length > 1}
               onChange={updateCategory}
               onDelete={() => deleteCategory(cat.id)}
+              onMoveUp={idx > 0 ? () => moveCategory(cat.id, 'up') : undefined}
+              onMoveDown={idx < sortedCategories.length - 1 ? () => moveCategory(cat.id, 'down') : undefined}
             />
           ))}
         </div>

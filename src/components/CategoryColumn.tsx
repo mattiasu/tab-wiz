@@ -4,9 +4,10 @@ import TabCard from './TabCard'
 interface Props {
   category: Category
   tabs: chrome.tabs.Tab[]
+  onAssignToCategory: (tab: chrome.tabs.Tab) => void
 }
 
-export default function CategoryColumn({ category, tabs }: Props) {
+export default function CategoryColumn({ category, tabs, onAssignToCategory }: Props) {
   return (
     <div className="flex w-64 shrink-0 flex-col gap-2">
       <div
@@ -23,7 +24,7 @@ export default function CategoryColumn({ category, tabs }: Props) {
 
       <div className="flex flex-col gap-1.5">
         {tabs.map((tab) => (
-          <TabCard key={tab.id} tab={tab} />
+          <TabCard key={tab.id} tab={tab} onAssignToCategory={onAssignToCategory} />
         ))}
       </div>
     </div>

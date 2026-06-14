@@ -34,6 +34,20 @@ export function categoriseTab(
   return null
 }
 
+export function suggestPatterns(url: string): string[] {
+  try {
+    const { hostname, pathname } = new URL(url)
+    const suggestions = [`*${hostname}/*`, `${hostname}/*`]
+    const segments = pathname.split('/').filter(Boolean)
+    if (segments.length >= 1) {
+      suggestions.push(`${hostname}/${segments[0]}/*`)
+    }
+    return suggestions
+  } catch {
+    return []
+  }
+}
+
 export type GroupedTabs = Map<string, { category: Category; tabs: chrome.tabs.Tab[] }>
 
 export function groupTabsByCategory(

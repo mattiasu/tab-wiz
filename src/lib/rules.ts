@@ -9,8 +9,8 @@ export interface Category {
 // These are example categories to get started — edit or replace them in Settings.
 export const DEFAULT_CATEGORIES: Category[] = [
   {
-    id: 'intranet',
-    name: 'Intranet',
+    id: 'local',
+    name: 'local',
     color: '#6366f1',
     patterns: ['*.local/*', '192.168.*', '10.*', '172.16.*'],
     order: 0,
