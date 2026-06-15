@@ -23,14 +23,23 @@ export default function TabCard({ tab, onAssignToCategory }: Props) {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const favicon = getFaviconUrl(tab)
 
-  function handleClick() {
-    if (tab.id !== undefined) {
-      chrome.tabs.update(tab.id, { active: true })
-      if (tab.windowId !== undefined) {
-        chrome.windows.update(tab.windowId, { focused: true })
-      }
+  
+  async function handleClick() {
+    if (tab.id === undefined) return
+
+    const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+
+    await chrome.tabs.update(tab.id, { active: true })
+
+    if (tab.windowId !== undefined) {
+      await chrome.windows.update(tab.windowId, { focused: true })
+    }
+
+    if (currentTab?.id && currentTab.id !== tab.id) {
+      await chrome.tabs.remove(currentTab.id)
     }
   }
+
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault()
