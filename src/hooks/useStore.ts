@@ -3,11 +3,14 @@ import type { Category } from '../lib/rules'
 import type { GroupedTabs } from '../lib/categoriser'
 import { groupTabsByCategory } from '../lib/categoriser'
 import { loadCategories, saveCategories } from '../lib/storage'
+import type { UsageMap } from '../lib/usage'
+import { loadUsage } from '../lib/usage'
 
 interface Store {
   categories: Category[]
   allTabs: chrome.tabs.Tab[]
   groupedTabs: GroupedTabs
+  usageMap: UsageMap
   loading: boolean
 
   init: () => Promise<void>
@@ -23,33 +26,43 @@ export const useStore = create<Store>((set, get) => {
     categories: [],
     allTabs: [],
     groupedTabs: new Map(),
+    usageMap: {},
     loading: true,
 
     init: async () => {
-      const categories = await loadCategories()
-      const tabs = await chrome.tabs.query({})
+      const [categories, tabs, usageMap] = await Promise.all([
+        loadCategories(),
+        chrome.tabs.query({}),
+        loadUsage(),
+      ])
       set({
         categories,
         allTabs: tabs,
-        groupedTabs: groupTabsByCategory(tabs, categories),
+        usageMap,
+        groupedTabs: groupTabsByCategory(tabs, categories, usageMap),
         loading: false,
       })
     },
 
     syncFromStorage: async () => {
-      const categories = await loadCategories()
-      const tabs = await chrome.tabs.query({})
+      const [categories, tabs, usageMap] = await Promise.all([
+        loadCategories(),
+        chrome.tabs.query({}),
+        loadUsage(),
+      ])
       set({
         categories,
         allTabs: tabs,
-        groupedTabs: groupTabsByCategory(tabs, categories),
+        usageMap,
+        groupedTabs: groupTabsByCategory(tabs, categories, usageMap),
       })
     },
 
     setCategories: async (categories) => {
       await saveCategories(categories)
+      const { usageMap } = get()
       const tabs = await chrome.tabs.query({})
-      set({ categories, allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories) })
+      set({ categories, allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories, usageMap) })
     },
 
     addPatternToCategory: async (categoryId, pattern) => {
@@ -62,16 +75,16 @@ export const useStore = create<Store>((set, get) => {
     },
 
     refreshTabs: async () => {
-      const { categories } = get()
+      const { categories, usageMap } = get()
       const tabs = await chrome.tabs.query({})
-      set({ allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories) })
+      set({ allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories, usageMap) })
     },
 
     closeTab: async (tabId) => {
       await chrome.tabs.remove(tabId)
-      const { categories } = get()
+      const { categories, usageMap } = get()
       const tabs = await chrome.tabs.query({})
-      set({ allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories) })
+      set({ allTabs: tabs, groupedTabs: groupTabsByCategory(tabs, categories, usageMap) })
     },
   }
 })

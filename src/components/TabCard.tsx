@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../hooks/useStore'
+import { normalizeUrl, isRecentlyVisited } from '../lib/usage'
+import { switchToTab } from '../lib/tabs'
 
 interface Props {
   tab: chrome.tabs.Tab
@@ -19,25 +21,17 @@ function getFaviconUrl(tab: chrome.tabs.Tab): string | null {
 }
 
 export default function TabCard({ tab, onAssignToCategory }: Props) {
-  const { closeTab } = useStore()
+  const { closeTab, usageMap } = useStore()
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const favicon = getFaviconUrl(tab)
+
+  const urlKey = normalizeUrl(tab.url ?? '')
+  const isRecent = isRecentlyVisited(urlKey ? usageMap[urlKey] : undefined)
 
   
   async function handleClick() {
     if (tab.id === undefined) return
-
-    const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-
-    await chrome.tabs.update(tab.id, { active: true })
-
-    if (tab.windowId !== undefined) {
-      await chrome.windows.update(tab.windowId, { focused: true })
-    }
-
-    if (currentTab?.id && currentTab.id !== tab.id) {
-      await chrome.tabs.remove(currentTab.id)
-    }
+    await switchToTab(tab.id, tab.windowId)
   }
 
 
@@ -54,7 +48,7 @@ export default function TabCard({ tab, onAssignToCategory }: Props) {
     <>
       <div
         onContextMenu={handleContextMenu}
-        className="flex w-full items-center gap-2 rounded-md bg-white px-2.5 py-2 ring-1 ring-zinc-100 transition-all hover:bg-zinc-50 hover:ring-zinc-200"
+        className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 ring-1 transition-all hover:ring-zinc-200 border-l-2 ${isRecent ? 'bg-amber-50/60 ring-amber-200 border-amber-400 hover:bg-amber-50' : 'bg-white ring-zinc-100 border-transparent hover:bg-zinc-50'}`}
       >
         <button
           onClick={handleClick}

@@ -5,6 +5,7 @@ import CategoryColumn from '../components/CategoryColumn'
 import SearchResults from '../components/SearchResults'
 import QuickRuleModal from '../components/QuickRuleModal'
 import type { SearchResult } from '../hooks/useSearch'
+import { switchToTab } from '../lib/tabs'
 
 export default function App() {
   const { loading, groupedTabs, allTabs, categories, init, syncFromStorage, addPatternToCategory } = useStore()
@@ -38,12 +39,9 @@ export default function App() {
     }
   }
 
-  function activate(result: SearchResult) {
+  async function activate(result: SearchResult) {
     if (result.type === 'tab' && result.tabId !== undefined) {
-      chrome.tabs.update(result.tabId, { active: true })
-      if (result.windowId !== undefined) {
-        chrome.windows.update(result.windowId, { focused: true })
-      }
+      await switchToTab(result.tabId, result.windowId)
     } else {
       window.location.href = result.url
     }
